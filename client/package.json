@@ -1,0 +1,22 @@
+{
+  "name": "et-ssh-client",
+  "version": "1.0.0",
+  "description": "A WebSockets-based remote terminal manager (based of Wetty) i.e. ET phone home",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asyrique/et-ssh.git"
+  },
+  "author": "Asyrique Thevendran <asyrique@gmail.com> (life.asyrique.me)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asyrique/et-ssh/issues"
+  },
+  "homepage": "https://github.com/asyrique/et-ssh#readme",
+  "dependencies": {
+    "socket.io-client": "^1.4.4"
+  }
+}
