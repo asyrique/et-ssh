@@ -1,11 +1,16 @@
 'use strict';
 
 const io = require('socket.io-client'),
-      readline = require('readline'),
-      https = require('https'),
-      spawn = require('child_process').spawn;
+  https = require('https'),
+  spawn = require('child_process').spawn,
+  pty = require('pty.js');
 
 const server = io('http://localhost:8080/box');
+let term;
+const sshuser = 'asyrique' + '@'; // SET USER HERE
+const sshhost = 'localhost'; // Should be localhost
+const sshport = 22;
+const sshauth = 'publickey,password';
 
 function getURL(url) {
   return new Promise((resolve, reject) => {
@@ -20,23 +25,23 @@ function getURL(url) {
         resolve(JSON.parse(body));
       });
     }).on('error', (e) => {
-      reject(e);
+      // reject(e);
+      resolve({ip: "fake-ip"});
     });
   });
 }
 
 server.on('connect', () => {
   console.log('connected to server');
-  const ls = spawn('cat', ['/proc/cpuinfo']);
+  const ls = spawn('cat', ['proc/cpuinfo']);
   let printout = '';
-  let serialnumber = '';
 
   ls.stdout.on('data', (data) => {
     printout = printout + data.toString();
   });
   ls.stdout.on('end', () => {
-    console.log("exit");
-    serialnumber = (printout.indexOf('Serial') > -1)
+    console.log('grabbed /proc/cpuinfo');
+    const serialnumber = (printout.indexOf('Serial') > -1)
     ? new Promise((resolve) => {resolve(printout.slice(printout.indexOf('Serial') + 6).split(':')[1].trim());})
     : getURL('https://ip.wearevase.com')
       .then((data) => {
@@ -50,11 +55,33 @@ server.on('connect', () => {
     });
   });
 });
-process.stdin.setEncoding('utf8');
-const rl = readline.createInterface({
-  input: process.stdin,
+
+server.on('term-connect', (data) => {
+  console.log('Connection incoming from ' + data.source);
+  term = pty.spawn('ssh', [sshuser + sshhost, '-p', sshport, '-o', 'PreferredAuthentications=' + sshauth], {
+    name: 'xterm-256color',
+    cols: 80,
+    rows: 30
+  });
+  term.on('data', (data) => {
+    server.emit('output', data);
+  });
+  term.on('exit', (code) => {
+    console.log((new Date()) + " PID=" + term.pid + " ENDED")
+  });
 });
-rl.prompt();
-rl.on('line', (line) => {
-  server.emit('list', {line: line});
+
+server.on('resize', (data) => {
+  term.resize(data.col, data.row);
+});
+server.on('input', (data) => {
+  term.write(data);
+});
+server.on('term-disconnect', () => {
+  console.log('Terminal disconnected');
+  term.end();
+});
+server.on('disconnect', () => {
+  console.log('Websocket disconnected');
+  // Handle reconnect retry here
 });
