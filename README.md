@@ -4,9 +4,9 @@ A remote management system built on Nodejs and socket.io
 
 ## TODO
 - [ ] Run everything over HTTPS
-- [ ] Retry connecting Websockets if connection lost, and handle for detecting internet connection and begin trying to connect (May be a systemd service?)
+- [x] Retry connecting Websockets if connection lost, and handle for detecting internet connection and begin trying to connect (May be a systemd service?) [Apparently Websockets handle this themselves :D]
 - [ ] Figure out how to set SSH username dynamically on session init.
-- [ ] Do proper session teardown
+- [x] Do proper session teardown
   - Remove connection `pipeStruct` from connectedBoxes object on disconnect of box or control.
 - [ ] Test large scale (1000+) boxes
 
