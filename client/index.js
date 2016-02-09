@@ -33,7 +33,7 @@ function getURL(url) {
 
 server.on('connect', () => {
   console.log('connected to server');
-  const ls = spawn('cat', ['proc/cpuinfo']);
+  const ls = spawn('cat', ['/proc/cpuinfo']);
   let printout = '';
 
   ls.stdout.on('data', (data) => {
@@ -43,7 +43,7 @@ server.on('connect', () => {
     console.log('grabbed /proc/cpuinfo');
     const serialnumber = (printout.indexOf('Serial') > -1)
     ? new Promise((resolve) => {resolve(printout.slice(printout.indexOf('Serial') + 6).split(':')[1].trim());})
-    : getURL('https://ip.wearevase.com')
+    : getURL('https://ip.getvase.com')
       .then((data) => {
         return 'FakePi-' + data.ip;
       })
@@ -83,5 +83,8 @@ server.on('term-disconnect', () => {
 });
 server.on('disconnect', () => {
   console.log('Websocket disconnected');
+  if (term) {
+    term.end();
+  }
   // Handle reconnect retry here
 });

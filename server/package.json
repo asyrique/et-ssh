@@ -18,6 +18,7 @@
   "homepage": "https://github.com/asyrique/et-ssh#readme",
   "dependencies": {
     "express": "^4.13.4",
+    "shortid": "^2.2.4",
     "socket.io": "^1.4.4"
   }
 }

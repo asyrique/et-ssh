@@ -10098,6 +10098,7 @@ hterm.Terminal.prototype.runCommandClass = function(commandClass, argString) {
         onExit: function(code) {
           self.io.pop();
           self.uninstallKeyboard();
+          console.log('closed keyboard');
           if (self.prefs_.get('close-on-exit'))
               window.close();
         }
@@ -16064,5 +16065,3 @@ lib.resource.add('hterm/git/HEAD', 'text/plain',
 '5db5b0ceefff97ce8b7a97edd3f5ba6857db54cf' +
 ''
 );
-
-

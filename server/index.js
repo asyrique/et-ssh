@@ -7,6 +7,59 @@ const http = require('http'),
   boxList = {},
   connectedBoxes = {};
 
+function PipeStruct(boxSock, controlSock, boxId) {
+  this.boxSock = boxSock;
+  this.controlSock = controlSock;
+  this.boxId = boxId;
+}
+
+PipeStruct.prototype.inputpipe = function inputPipe(data) {
+  this.boxSock.emit('input', data);
+};
+PipeStruct.prototype.resizepipe = function resizePipe(data) {
+  this.boxSock.emit('resize', data);
+};
+PipeStruct.prototype.outputpipe = function outputPipe(data) {
+  this.controlSock.emit('output', data);
+};
+PipeStruct.prototype.controldisconnect = function controlDisconnect(id) {
+  if (id) {
+    console.log('Received term-disconnect from control for ' + this.boxId + '. Client sent ' + id);
+  } else {
+    console.log('Control websocket disconnected');
+  }
+  this.boxSock.emit('term-disconnect', {});
+  this.unsetListeners();
+  connectedBoxes[this.boxId] = null;
+  console.log('deleted object ? ' + delete connectedBoxes[this.boxId]);
+};
+
+PipeStruct.prototype.boxdisconnect = function boxDisconnect() {
+  console.log('Box disconnected');
+  this.controlSock.emit('box-disconnect', this.boxId);
+  this.unsetListeners();
+  connectedBoxes[this.boxId] = null;
+  console.log('deleted object ? ' + delete connectedBoxes[this.boxId]);
+};
+
+PipeStruct.prototype.setListeners = function pipeStructSet() {
+  this.controlSock.on('input', this.inputpipe.bind(this));
+  this.controlSock.on('resize', this.resizepipe.bind(this));
+  this.controlSock.on('term-disconnect', this.controldisconnect.bind(this));
+  this.controlSock.on('disconnect', this.controldisconnect.bind(this));
+  this.boxSock.on('output', this.outputpipe.bind(this));
+  this.boxSock.on('box-disconnect', this.boxdisconnect.bind(this));
+};
+
+PipeStruct.prototype.unsetListeners = function pipeStructUnset() {
+  // TODO: Figure out if there's a better way than removing all listeners
+  this.controlSock.removeAllListeners('input');
+  this.controlSock.removeAllListeners('resize');
+  this.controlSock.removeAllListeners('term-disconnect');
+  this.controlSock.removeAllListeners('disconnect');
+  this.boxSock.removeAllListeners('output');
+  this.boxSock.removeAllListeners('box-disconnect');
+};
 
 const app = express();
 app.use('/', express.static(path.join(__dirname, 'public')));
@@ -25,38 +78,14 @@ const control = server(httpserv, {path: '/control/socket.io'})
     });
 
     socket.on('term-connect', (boxId) => {
-      console.log('received connect signal.');
-      console.log(boxId);
+      console.log('received connect signal from ' + socket.request.connection.remoteAddress + ' requesting connection to ' + boxId);
 
-      let pipeStruct = {};
-      pipeStruct.controlSock = socket;
-      pipeStruct.boxSock = boxList[boxId];
-      pipeStruct.boxId = boxId;
+      let pipeStruct = new PipeStruct(boxList[boxId], socket, boxId);
+      pipeStruct.setListeners();
       connectedBoxes[boxId] = pipeStruct;
 
       // Notify box of incoming connection request
       pipeStruct.boxSock.emit('term-connect', {source: pipeStruct.controlSock.request.connection.remoteAddress});
-
-      // Wire up inputs from control to box
-      pipeStruct.controlSock.on('input', (data) => {
-        pipeStruct.boxSock.emit('input', data);
-      });
-      pipeStruct.controlSock.on('resize', (data) => {
-        pipeStruct.boxSock.emit('resize', data);
-      });
-
-      // Wire up responses from box to control
-      pipeStruct.boxSock.on('output', (data) => {
-        pipeStruct.controlSock.emit('output', data);
-      });
-
-      // Bind disconnect listeners
-      pipeStruct.controlSock.on('disconnect', () => {
-        pipeStruct.boxSock.emit('term-disconnect', {});
-        console.log(connectedBoxes);
-        delete connectedBoxes[pipeStruct.boxId];
-        console.log(connectedBoxes);
-      });
     });
   });
 
